@@ -68,7 +68,13 @@ struct FileTree_t *addFileTree(struct FileTree_t* file, String fileName, String 
     file->right = 0;
     return newFile;
   }
-  return 0;
+  if(file->key > fileName) {
+    file->left = addFileTree(file->left, fileName, content);
+  }
+  else {
+    file->right = addFileTree(file->right, fileName, content);
+  }
+  return file;
 }
 
 bool isInstructionAcceptable(String instr) {
@@ -80,6 +86,7 @@ bool isInstructionAcceptable(String instr) {
   return false;
 }
 
+/*
 void saveString(String element, int offset) {
   EEPROM.write(offset, element.length());
   for(int8_t i = 0; i < element.length(); i++) {
@@ -95,18 +102,16 @@ String readStr(int offset) {
   }
   return reference;
 }
+*/
 
 void setup() {
   Serial.begin(9600);
   Serial.println("Started!");
  // saveString("AAA", 0);
  // readStr(0);
-  int *parl;
-  parl = (int* )malloc(sizeof(int) * 5);
-  parl[0] = 1;
-  parl[1] = 2;
-  Serial.println(parl[0]);
-  Serial.println(parl[1]);
+  struct FileTree_t* file = 0;
+  file = addFileTree(file, "firstFile.txt", "Some content");
+  Serial.println("Done");
  // Serial.println(readStr(0));
 }
 
