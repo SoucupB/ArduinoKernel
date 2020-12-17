@@ -62,10 +62,10 @@ struct FileTree_t *addFileTree(struct FileTree_t* file, String fileName, String 
   if(!file) {
     struct FileTree_t *newFile = (struct FileTree_t*)malloc(
       							  sizeof(struct FileTree_t));
-    file->key = fileName;
-    file->value = content;
-    file->left = 0;
-    file->right = 0;
+    newFile->key = fileName;
+    newFile->value = content;
+    newFile->left = 0;
+    newFile->right = 0;
     return newFile;
   }
   if(file->key > fileName) {
@@ -75,6 +75,21 @@ struct FileTree_t *addFileTree(struct FileTree_t* file, String fileName, String 
     file->right = addFileTree(file->right, fileName, content);
   }
   return file;
+}
+
+String getFileContent(struct FileTree_t* file, String fileName) {
+  if(!file) {
+    return "";
+  }
+  if(file->key == fileName) {
+    return file->value;
+  }
+  if(file->key > fileName) {
+    return getFileContent(file->left, fileName);
+  }
+  if(file->key <= fileName) {
+    return getFileContent(file->right, fileName);
+  }
 }
 
 bool isInstructionAcceptable(String instr) {
@@ -111,7 +126,10 @@ void setup() {
  // readStr(0);
   struct FileTree_t* file = 0;
   file = addFileTree(file, "firstFile.txt", "Some content");
+  file = addFileTree(file, "secondFile.txt", "Some another content");
   Serial.println("Done");
+  Serial.println(getFileContent(file, "firstFile.txt"));
+  Serial.println(getFileContent(file, "secondFile.txt"));
  // Serial.println(readStr(0));
 }
 
