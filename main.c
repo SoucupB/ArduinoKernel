@@ -76,12 +76,20 @@ struct Vector *vct_Init(int32_t elementSize) {
   return vct;
 }
 
-void vct_Add(struct Vector *vct, void *element) {
+void vct_PushElement(struct Vector *vct, void *element) {
+  memcpy(vct->buffer + vct->size, element, vct->size * vct->elementsSize);
+  vct->size++;
+}
+
+void vct_Push(struct Vector *vct, void *element) {
   if(vct->size >= vct->capacity) {
     vct->capacity <<= 1;
     void *buffer = malloc(vct->elementsSize * vct->capacity);
     memcpy(buffer, vct->buffer, vct->size * vct->elementsSize);
+    free(vct->buffer);
+    vct->buffer = buffer;
   }
+  vct_PushElement(vct, element);
 }
 
 struct FileTree_t *fd_AddFileTree(struct FileTree_t* folder, String folderName,
