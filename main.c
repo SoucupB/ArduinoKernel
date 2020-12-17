@@ -52,32 +52,75 @@ String instructions[] = {
 int8_t instrLength = 4;
 
 struct FileTree_t {
+  String folderName;
   String key;
   String value;
   struct FileTree_t* left;
   struct FileTree_t* right;
+  struct FileTree_t** child;
 };
 
-struct FileTree_t *addFileTree(struct FileTree_t* file, String fileName, String content) {
-  if(!file) {
-    struct FileTree_t *newFile = (struct FileTree_t*)malloc(
-      							  sizeof(struct FileTree_t));
-    newFile->key = fileName;
-    newFile->value = content;
-    newFile->left = 0;
-    newFile->right = 0;
-    return newFile;
-  }
-  if(file->key > fileName) {
-    file->left = addFileTree(file->left, fileName, content);
-  }
-  else {
-    file->right = addFileTree(file->right, fileName, content);
-  }
-  return file;
+struct Vector {
+  void *buffer;
+  int32_t capacity;
+  int32_t size;
+  int32_t elementsSize;
+};
+
+struct Vector *vct_Init(int32_t elementSize) {
+  struct Vector *vct = (struct Vector *)malloc(elementSize);
+  vct->buffer = malloc(elementSize);
+  vct->capacity = 1;
+  vct->size = 0;
+  vct->elementsSize = elementSize;
+  return vct;
 }
 
-String getFileContent(struct FileTree_t* file, String fileName) {
+void vct_Add(struct Vector *vct, void *element) {
+  if(vct->size >= vct->capacity) {
+    vct->capacity <<= 1;
+    void *buffer = malloc(vct->elementsSize * vct->capacity);
+    memcpy(buffer, vct->buffer, vct->size * vct->elementsSize);
+  }
+}
+
+struct FileTree_t *fd_AddFileTree(struct FileTree_t* folder, String folderName,
+                               String fileName, String content) {
+  if(!folder) {
+    struct FileTree_t *newFolder = (struct FileTree_t*)malloc(
+      							  	sizeof(struct FileTree_t));
+    newFolder->key = fileName;
+    newFolder->value = content;
+    newFolder->folderName = folderName;
+    newFolder->left = 0;
+    newFolder->right = 0;
+    newFolder->child = 0;
+    return newFolder;
+  }
+  if(folder->key > fileName) {
+    folder->left = fd_AddFileTree(folder->left, folderName, fileName, content);
+  }
+  else {
+    folder->right = fd_AddFileTree(folder->right, folderName, fileName, content);
+  }
+  return folder;
+}
+
+struct FileTree_t *fd_init(String folderName) {
+  struct FileTree_t *newFolder = (struct FileTree_t*)malloc(
+    sizeof(struct FileTree_t));
+  newFolder->folderName = folderName;
+  newFolder->left = 0;
+  newFolder->right = 0;
+  newFolder->child = 0;
+  return newFolder;
+}
+
+void createSubfolder(struct FileTree_t* folder, struct FileTree_t* subFolder) {
+  
+}
+
+String fd_GetFileContent(struct FileTree_t* file, String fileName) {
   if(!file) {
     return "";
   }
@@ -85,10 +128,10 @@ String getFileContent(struct FileTree_t* file, String fileName) {
     return file->value;
   }
   if(file->key > fileName) {
-    return getFileContent(file->left, fileName);
+    return fd_GetFileContent(file->left, fileName);
   }
   if(file->key <= fileName) {
-    return getFileContent(file->right, fileName);
+    return fd_GetFileContent(file->right, fileName);
   }
 }
 
@@ -101,35 +144,17 @@ bool isInstructionAcceptable(String instr) {
   return false;
 }
 
-/*
-void saveString(String element, int offset) {
-  EEPROM.write(offset, element.length());
-  for(int8_t i = 0; i < element.length(); i++) {
-    EEPROM.write(offset + i + 1, element[i]);
-  }
-}
-
-String readStr(int offset) {
-  String reference = "";
-  int strSize = EEPROM.read(offset);
-  for(int i = 0; i < strSize; i++) {
-    reference += (char)EEPROM.read(offset + i + 1);
-  }
-  return reference;
-}
-*/
-
 void setup() {
   Serial.begin(9600);
   Serial.println("Started!");
  // saveString("AAA", 0);
  // readStr(0);
-  struct FileTree_t* file = 0;
-  file = addFileTree(file, "firstFile.txt", "Some content");
-  file = addFileTree(file, "secondFile.txt", "Some another content");
+  struct FileTree_t* folder = 0;
+  folder = fd_AddFileTree(folder, parentDirectory, "firstFile.txt", "Some content");
+  folder = fd_AddFileTree(folder, parentDirectory, "secondFile.txt", "Some another content");
   Serial.println("Done");
-  Serial.println(getFileContent(file, "firstFile.txt"));
-  Serial.println(getFileContent(file, "secondFile.txt"));
+  Serial.println(fd_GetFileContent(folder, "firstFile.txt"));
+  Serial.println(fd_GetFileContent(folder, "secondFile.txt"));
  // Serial.println(readStr(0));
 }
 
