@@ -51,21 +51,22 @@ String instructions[] = {
 };
 int8_t instrLength = 4;
 
-typedef struct FileTree_t {
+struct FileTree_t {
   String key;
   String value;
   struct FileTree_t* left;
   struct FileTree_t* right;
-} *FileTree;
+};
 
-FileTree addFileTree(FileTree file, String fileName, String content) {
-  if(file) {
-    file = (FileTree)malloc(sizeof(struct FileTree_t));
+struct FileTree_t *addFileTree(struct FileTree_t* file, String fileName, String content) {
+  if(!file) {
+    struct FileTree_t *newFile = (struct FileTree_t*)malloc(
+      							  sizeof(struct FileTree_t));
     file->key = fileName;
     file->value = content;
     file->left = 0;
     file->right = 0;
-    return file;
+    return newFile;
   }
   return 0;
 }
