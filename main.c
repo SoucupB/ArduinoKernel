@@ -209,6 +209,7 @@ void setup() {
   Serial.println("Started!");
   folderStack = vct_Init(sizeof(struct FileTree_t *));
   currentFolder = fd_Init(parentDirectory);
+  createSubfolder(currentFolder, "Programfiles");
   vct_Push(folderStack, &currentFolder);
  // currentFolder = fd_AddFileTree(currentFolder, parentDirectory, "firstFile.txt", "Some content");
  // currentFolder = fd_AddFileTree(currentFolder, parentDirectory, "secondFile.txt", "Some another content");
@@ -225,20 +226,24 @@ String readInstruction() {
   return response;
 }
 
+void where() {
+  struct FileTree_t **stack = ((struct FileTree_t **)folderStack->buffer);
+  for(int32_t i = 0; i < folderStack->size; i++) {
+    struct FileTree_t *cFolder = stack[i];
+    Serial.print(cFolder->folderName + "/");
+  }
+  Serial.println();
+}
+
 void recieveInstruction(String instruction, struct Vector *args) {
   struct Vector **arge = (struct Vector **)args->buffer;
   if(!strcmp((char *)arge[0]->buffer, "where")) {
-    struct FileTree_t **stack = ((struct FileTree_t **)folderStack->buffer);
-    for(int32_t i = 0; i < folderStack->size; i++) {
-      struct FileTree_t *cFolder = stack[i];
-      Serial.print(cFolder->folderName + "/");
-    }
-    Serial.println();
+    where();
   }
   //Serial.println(strlen((char *)arge[0]->buffer));
   if(!strcmp((char *)arge[0]->buffer, "cd")) {
-
     processCd(args, currentFolder->child);
+    where();
   }
 }
 
