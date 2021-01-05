@@ -157,7 +157,8 @@ struct Vector *arguments(String instruction) {
       argument += instruction[i];
       i++;
     }
-    char *heapAllocator = (char *)malloc(argument.length());
+    char *heapAllocator = (char *)malloc(argument.length() + 1);
+    memset(heapAllocator, 0, argument.length() + 1);
     memcpy(heapAllocator, &argument[0], argument.length());
     arg->buffer = heapAllocator;
     arg->size = argument.length();
@@ -175,6 +176,24 @@ void showArguments(struct Vector *argve) {
   }
 }
 
+void processCd(struct Vector *argv, struct Vector *folders) {
+  struct Vector **args = (struct Vector **)argv->buffer;
+  if(argv->size != 2) {
+    Serial.println("Invalid number of arguments for CD");
+    return ;
+  }
+  char *buffer = (char *)args[1]->buffer;
+  struct FileTree_t **fds = ((struct FileTree_t **)folders->buffer);
+  for(int32_t i = 0; i < folders->size; i++) {
+    if(!strcmp(&fds[i]->folderName[0], buffer)) {
+      vct_Push(folderStack, &fds[i]);
+      currentFolder = fds[i];
+      return ;
+    }
+  }
+  Serial.println("No such directory exists!");
+}
+
 bool isInstructionAcceptable(String instr) {
   String getArgInst = getInstr(instr);
   for(int8_t i = 0; i < instrLength; i++) {
@@ -189,10 +208,7 @@ void setup() {
   Serial.begin(9600);
   Serial.println("Started!");
   folderStack = vct_Init(sizeof(struct FileTree_t *));
-  Serial.println(folderStack->size);
   currentFolder = fd_Init(parentDirectory);
-
-
   vct_Push(folderStack, &currentFolder);
  // currentFolder = fd_AddFileTree(currentFolder, parentDirectory, "firstFile.txt", "Some content");
  // currentFolder = fd_AddFileTree(currentFolder, parentDirectory, "secondFile.txt", "Some another content");
@@ -209,18 +225,20 @@ String readInstruction() {
   return response;
 }
 
-void recieveInstruction(String instruction) {
-  if(instruction == "where") {
+void recieveInstruction(String instruction, struct Vector *args) {
+  struct Vector **arge = (struct Vector **)args->buffer;
+  if(!strcmp((char *)arge[0]->buffer, "where")) {
     struct FileTree_t **stack = ((struct FileTree_t **)folderStack->buffer);
     for(int32_t i = 0; i < folderStack->size; i++) {
       struct FileTree_t *cFolder = stack[i];
       Serial.print(cFolder->folderName + "/");
     }
+    Serial.println();
   }
-  if(instruction == "cd") {
-    struct Vector *folders = currentFolder->child;
-    struct FileTree_t **fds = ((struct FileTree_t **)folders->buffer);
+  //Serial.println(strlen((char *)arge[0]->buffer));
+  if(!strcmp((char *)arge[0]->buffer, "cd")) {
 
+    processCd(args, currentFolder->child);
   }
 }
 
@@ -228,13 +246,13 @@ void loop() {
   char incomingByte = 0;
   String response = readInstruction();
   if(response != "") {
-    struct Vector *args = arguments(response);
-    showArguments(args);
+    //struct Vector *args = arguments(response);
+    //showArguments(args);
     if(!isInstructionAcceptable(response)) {
       Serial.println("Unknown instruction: " + response);
     }
     else {
-      recieveInstruction(response);
+      recieveInstruction(response, arguments(response));
     }
   }
 }
