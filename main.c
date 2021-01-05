@@ -1,14 +1,11 @@
 /*
   LiquidCrystal Library - Hello World
-
  Demonstrates the use a 16x2 LCD display.  The LiquidCrystal
  library works with all LCD displays that are compatible with the
  Hitachi HD44780 driver. There are many of them out there, and you
  can usually tell them by the 16-pin interface.
-
  This sketch prints "Hello World!" to the LCD
  and shows the time.
-
   The circuit:
  * LCD RS pin to digital pin 12
  * LCD Enable pin to digital pin 11
@@ -22,7 +19,6 @@
  * 10K resistor:
  * ends to +5V and ground
  * wiper to LCD VO pin (pin 3)
-
  Library originally added 18 Apr 2008
  by David A. Mellis
  library modified 5 Jul 2009
@@ -31,9 +27,7 @@
  by Tom Igoe
  modified 22 Nov 2010
  by Tom Igoe
-
  This example code is in the public domain.
-
  http://www.arduino.cc/en/Tutorial/LiquidCrystal
  */
 
@@ -42,14 +36,26 @@
 #include <EEPROM.h>
 
 String parentDirectory = "C:/";
+struct FileTree_t* currentFolder;
+struct Vector *folderStack;
 
 String instructions[] = {
   "cd",
   "ls",
   "touch",
-  "compile"
+  "compile",
+  "mkdir",
+  "write",
+  "where"
 };
 int8_t instrLength = 4;
+
+struct Vector {
+  void *buffer;
+  int32_t capacity;
+  int32_t size;
+  int32_t elementsSize;
+};
 
 struct FileTree_t {
   String folderName;
@@ -57,14 +63,7 @@ struct FileTree_t {
   String value;
   struct FileTree_t* left;
   struct FileTree_t* right;
-  struct FileTree_t** child;
-};
-
-struct Vector {
-  void *buffer;
-  int32_t capacity;
-  int32_t size;
-  int32_t elementsSize;
+  struct Vector *child;
 };
 
 struct Vector *vct_Init(int32_t elementSize) {
@@ -77,7 +76,7 @@ struct Vector *vct_Init(int32_t elementSize) {
 }
 
 void vct_PushElement(struct Vector *vct, void *element) {
-  memcpy(vct->buffer + vct->size, element, vct->size * vct->elementsSize);
+  memcpy(vct->buffer + vct->size * vct->elementsSize, element, vct->elementsSize);
   vct->size++;
 }
 
@@ -102,7 +101,7 @@ struct FileTree_t *fd_AddFileTree(struct FileTree_t* folder, String folderName,
     newFolder->folderName = folderName;
     newFolder->left = 0;
     newFolder->right = 0;
-    newFolder->child = 0;
+    newFolder->child = vct_Init(sizeof(struct FileTree_t*));
     return newFolder;
   }
   if(folder->key > fileName) {
@@ -114,18 +113,19 @@ struct FileTree_t *fd_AddFileTree(struct FileTree_t* folder, String folderName,
   return folder;
 }
 
-struct FileTree_t *fd_init(String folderName) {
+struct FileTree_t *fd_Init(String folderName) {
   struct FileTree_t *newFolder = (struct FileTree_t*)malloc(
     sizeof(struct FileTree_t));
   newFolder->folderName = folderName;
   newFolder->left = 0;
   newFolder->right = 0;
-  newFolder->child = 0;
+  newFolder->child = vct_Init(sizeof(struct FileTree_t *));
   return newFolder;
 }
 
-void createSubfolder(struct FileTree_t* folder, struct FileTree_t* subFolder) {
-  
+void createSubfolder(struct FileTree_t* folder, String name) {
+  struct FileTree_t *newFolder = fd_Init(name);
+  vct_Push(folder->child, &newFolder);
 }
 
 String fd_GetFileContent(struct FileTree_t* file, String fileName) {
@@ -155,15 +155,14 @@ bool isInstructionAcceptable(String instr) {
 void setup() {
   Serial.begin(9600);
   Serial.println("Started!");
- // saveString("AAA", 0);
- // readStr(0);
-  struct FileTree_t* folder = 0;
-  folder = fd_AddFileTree(folder, parentDirectory, "firstFile.txt", "Some content");
-  folder = fd_AddFileTree(folder, parentDirectory, "secondFile.txt", "Some another content");
+  folderStack = vct_Init(sizeof(struct FileTree_t *));
+  currentFolder = fd_Init(parentDirectory);
+  vct_Push(folderStack, &currentFolder);
+  currentFolder = fd_AddFileTree(currentFolder, parentDirectory, "firstFile.txt", "Some content");
+  currentFolder = fd_AddFileTree(currentFolder, parentDirectory, "secondFile.txt", "Some another content");
   Serial.println("Done");
-  Serial.println(fd_GetFileContent(folder, "firstFile.txt"));
-  Serial.println(fd_GetFileContent(folder, "secondFile.txt"));
- // Serial.println(readStr(0));
+  Serial.println(fd_GetFileContent(currentFolder, "firstFile.txt"));
+  Serial.println(fd_GetFileContent(currentFolder, "secondFile.txt"));
 }
 
 String readInstruction() {
@@ -175,7 +174,12 @@ String readInstruction() {
 }
 
 void recieveInstruction(String instruction) {
-  
+  if(instruction == "where") {
+    for(int32_t i = 0; i < folderStack->size; i++) {
+      struct FileTree_t *currentFolder = ((struct FileTree_t *)folderStack->buffer)[i];
+      Serial.println();
+    }
+  }
 }
 
 void loop() {
@@ -190,4 +194,3 @@ void loop() {
     }
   }
 }
- 
