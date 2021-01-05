@@ -30,7 +30,7 @@
  This example code is in the public domain.
  http://www.arduino.cc/en/Tutorial/LiquidCrystal
  */
-String parentDirectory = "C:/";
+String parentDirectory = "C:";
 
 String instructions[] = {
   "cd",
@@ -140,9 +140,45 @@ String fd_GetFileContent(struct FileTree_t* file, String fileName) {
   }
 }
 
+String getInstr(String instr) {
+  String fArgv = "";
+  for(int8_t i = 0; instr[i] != ' ' && i < instr.length(); i++) {
+    fArgv += instr[i];
+  }
+  return fArgv;
+}
+
+struct Vector *arguments(String instruction) {
+  struct Vector *argve = vct_Init(sizeof(struct Vector *));
+  for(int8_t i = 0; i < instruction.length(); i++) {
+    String argument = "";
+    struct Vector *arg = vct_Init(sizeof(char *));
+    while(i < instruction.length() && instruction[i] != ' ') {
+      argument += instruction[i];
+      i++;
+    }
+    char *heapAllocator = (char *)malloc(argument.length());
+    memcpy(heapAllocator, &argument[0], argument.length());
+    arg->buffer = heapAllocator;
+    arg->size = argument.length();
+    arg->capacity = argument.length();
+    vct_Push(argve, &arg);
+  }
+  return argve;
+}
+
+void showArguments(struct Vector *argve) {
+  struct Vector **args = (struct Vector **)argve->buffer;
+  for(int8_t i = 0; i < argve->size; i++) {
+    char *buffer = (char *)args[i]->buffer;
+    Serial.println(buffer);
+  }
+}
+
 bool isInstructionAcceptable(String instr) {
+  String getArgInst = getInstr(instr);
   for(int8_t i = 0; i < instrLength; i++) {
-    if(instructions[i] == instr) {
+    if(instructions[i] == getArgInst) {
       return true;
     }
   }
@@ -158,8 +194,8 @@ void setup() {
 
 
   vct_Push(folderStack, &currentFolder);
-  currentFolder = fd_AddFileTree(currentFolder, parentDirectory, "firstFile.txt", "Some content");
-  currentFolder = fd_AddFileTree(currentFolder, parentDirectory, "secondFile.txt", "Some another content");
+ // currentFolder = fd_AddFileTree(currentFolder, parentDirectory, "firstFile.txt", "Some content");
+ // currentFolder = fd_AddFileTree(currentFolder, parentDirectory, "secondFile.txt", "Some another content");
   Serial.println("Done");
  // Serial.println(fd_GetFileContent(currentFolder, "firstFile.txt"));
  // Serial.println(fd_GetFileContent(currentFolder, "secondFile.txt"));
@@ -178,8 +214,13 @@ void recieveInstruction(String instruction) {
     struct FileTree_t **stack = ((struct FileTree_t **)folderStack->buffer);
     for(int32_t i = 0; i < folderStack->size; i++) {
       struct FileTree_t *cFolder = stack[i];
-
+      Serial.print(cFolder->folderName + "/");
     }
+  }
+  if(instruction == "cd") {
+    struct Vector *folders = currentFolder->child;
+    struct FileTree_t **fds = ((struct FileTree_t **)folders->buffer);
+
   }
 }
 
@@ -187,6 +228,8 @@ void loop() {
   char incomingByte = 0;
   String response = readInstruction();
   if(response != "") {
+    struct Vector *args = arguments(response);
+    showArguments(args);
     if(!isInstructionAcceptable(response)) {
       Serial.println("Unknown instruction: " + response);
     }
