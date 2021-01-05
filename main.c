@@ -30,14 +30,7 @@
  This example code is in the public domain.
  http://www.arduino.cc/en/Tutorial/LiquidCrystal
  */
-
-
-#include <LiquidCrystal.h>
-#include <EEPROM.h>
-
 String parentDirectory = "C:/";
-struct FileTree_t* currentFolder;
-struct Vector *folderStack;
 
 String instructions[] = {
   "cd",
@@ -48,13 +41,13 @@ String instructions[] = {
   "write",
   "where"
 };
-int8_t instrLength = 4;
+int8_t instrLength = 7;
 
 struct Vector {
   void *buffer;
   int32_t capacity;
   int32_t size;
-  int32_t elementsSize;
+  int8_t elementsSize;
 };
 
 struct FileTree_t {
@@ -66,13 +59,16 @@ struct FileTree_t {
   struct Vector *child;
 };
 
-struct Vector *vct_Init(int32_t elementSize) {
-  struct Vector *vct = (struct Vector *)malloc(elementSize);
-  vct->buffer = malloc(elementSize);
-  vct->capacity = 1;
-  vct->size = 0;
-  vct->elementsSize = elementSize;
-  return vct;
+struct FileTree_t* currentFolder;
+struct Vector *folderStack;
+
+struct Vector *vct_Init(int8_t elementSize) {
+  struct Vector *self = (struct Vector *)malloc(sizeof(struct Vector));
+  self->buffer = malloc(elementSize);
+  self->capacity = 1;
+  self->size = 0;
+  self->elementsSize = elementSize;
+  return self;
 }
 
 void vct_PushElement(struct Vector *vct, void *element) {
@@ -114,6 +110,7 @@ struct FileTree_t *fd_AddFileTree(struct FileTree_t* folder, String folderName,
 }
 
 struct FileTree_t *fd_Init(String folderName) {
+  Serial.println(folderStack->size);
   struct FileTree_t *newFolder = (struct FileTree_t*)malloc(
     sizeof(struct FileTree_t));
   newFolder->folderName = folderName;
@@ -156,13 +153,16 @@ void setup() {
   Serial.begin(9600);
   Serial.println("Started!");
   folderStack = vct_Init(sizeof(struct FileTree_t *));
+  Serial.println(folderStack->size);
   currentFolder = fd_Init(parentDirectory);
+
+
   vct_Push(folderStack, &currentFolder);
   currentFolder = fd_AddFileTree(currentFolder, parentDirectory, "firstFile.txt", "Some content");
   currentFolder = fd_AddFileTree(currentFolder, parentDirectory, "secondFile.txt", "Some another content");
   Serial.println("Done");
-  Serial.println(fd_GetFileContent(currentFolder, "firstFile.txt"));
-  Serial.println(fd_GetFileContent(currentFolder, "secondFile.txt"));
+ // Serial.println(fd_GetFileContent(currentFolder, "firstFile.txt"));
+ // Serial.println(fd_GetFileContent(currentFolder, "secondFile.txt"));
 }
 
 String readInstruction() {
@@ -175,9 +175,10 @@ String readInstruction() {
 
 void recieveInstruction(String instruction) {
   if(instruction == "where") {
+    struct FileTree_t **stack = ((struct FileTree_t **)folderStack->buffer);
     for(int32_t i = 0; i < folderStack->size; i++) {
-      struct FileTree_t *currentFolder = ((struct FileTree_t *)folderStack->buffer)[i];
-      Serial.println();
+      struct FileTree_t *cFolder = stack[i];
+
     }
   }
 }
@@ -190,7 +191,7 @@ void loop() {
       Serial.println("Unknown instruction: " + response);
     }
     else {
-      Serial.println(response);
+      recieveInstruction(response);
     }
   }
 }
