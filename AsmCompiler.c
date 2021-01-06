@@ -81,7 +81,7 @@ void str_Delete(struct StringElement *self) {
 
 void vct_Push(struct Vector *vct, void *element) {
   if(vct->size >= vct->capacity) {
-    vct->capacity += 5;
+    vct->capacity++;
     void *buffer = malloc(vct->elementsSize * vct->capacity);
     memcpy(buffer, vct->buffer, vct->size * vct->elementsSize);
     free(vct->buffer);
