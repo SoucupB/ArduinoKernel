@@ -18,6 +18,7 @@ struct StringElement {
 };
 int8_t instrLength = 7;
 struct StringElement *instructions[7];
+uint8_t str_Compare(struct StringElement *a, struct StringElement *b);
 
 struct FileContent_t {
   struct StringElement *key;
@@ -95,7 +96,10 @@ struct FileContent_t *tr_AddFile(struct FileContent_t *file, struct StringElemen
     self->value = content;
     return self;
   }
-  if(file->key > fileName) {
+  if(str_Compare(file->key, fileName)) {
+    return file;
+  }
+  if(strcmp(file->key->buffer, fileName->buffer)) {
     file->left = tr_AddFile(file->left, fileName, content);
   }
   else {
@@ -142,7 +146,7 @@ void showFiles(struct FileContent_t* folder) {
     return ;
   }
   showFiles(folder->left);
-  printf("%s\n", folder->key->buffer);
+  printf("Files %s\n", folder->key->buffer);
   showFiles(folder->right);
 }
 
@@ -216,6 +220,16 @@ void processCd(struct Vector *argv, struct Vector *folders) {
   Serialprintln("No such directory exists!");
 }
 
+void touch(struct Vector *args) {
+  if(args->size != 2) {
+    printf("Wrong number of args!\n");
+  }
+  else {
+    struct Vector **arge = (struct Vector **)args->buffer;
+    fd_AddFileTree(currentFolder, str_Init((char *)arge[1]->buffer), str_Init((char *)""));
+  }
+}
+
 void testing() {
   struct FileTree_t *folder = createSubfolder(currentFolder, str_Init((char *)"Programfiles"));
   fd_AddFileTree(currentFolder, str_Init((char *)"personal.txt"), str_Init((char *)"Go to buy some milk!"));
@@ -275,7 +289,7 @@ void ls() {
   struct FileTree_t **cfl = (struct FileTree_t **)((struct Vector *)folders)->buffer;
   for(int32_t i = 0; i < folders->size; i++) {
     struct FileTree_t *cFolder = cfl[i];
-    printf("%s\n", cFolder->folderName->buffer);
+    printf("Dir %s\n", cFolder->folderName->buffer);
   }
   showFiles(currentFolder->files);
 }
@@ -292,17 +306,28 @@ void recieveInstruction(struct StringElement *instruction, struct Vector *args) 
     processCd(args, currentFolder->child);
     where();
   }
+  if(!strcmp((char *)arge[0]->buffer, "touch")) {
+    touch(args);
+  }
 }
 
-int main() {
-  setup();
-  struct StringElement *argument = str_Init((char *)"where");
-  if(isInstructionAcceptable(argument)) {
-    recieveInstruction(argument, arguments(argument));
+void processCommander(struct StringElement *element) {
+  if(isInstructionAcceptable(element)) {
+    printf("%s\n", element->buffer);
+    recieveInstruction(element, arguments(element));
   }
   else {
     printf("Not good!\n");
   }
+  printf("\n");
+}
+
+int main() {
+  setup();
+  processCommander(str_Init((char *)"where"));
+  processCommander(str_Init((char *)"ls"));
+  processCommander(str_Init((char *)"touch ogica.txt"));
+  processCommander(str_Init((char *)"ls"));
   //struct StringElement *arg = str_Init((char *)"ls");
  // recieveInstruction(arg, arguments(arg));
 }

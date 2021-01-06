@@ -58,6 +58,7 @@ struct FileTree_t {
 };
 struct FileTree_t *currentFolder;
 struct Vector *folderStack;
+uint8_t str_Compare(struct StringElement *a, struct StringElement *b);
 
 struct Vector *vct_Init(int8_t elementSize) {
   struct Vector *self = (struct Vector *)malloc(sizeof(struct Vector));
@@ -120,7 +121,10 @@ struct FileContent_t *tr_AddFile(struct FileContent_t *file, struct StringElemen
     self->value = content;
     return self;
   }
-  if(file->key > fileName) {
+  if(str_Compare(file->key, fileName)) {
+    return file;
+  }
+  if(strcmp(file->key->buffer, fileName->buffer)) {
     file->left = tr_AddFile(file->left, fileName, content);
   }
   else {
@@ -167,6 +171,7 @@ void showFiles(struct FileContent_t* folder) {
     return ;
   }
   showFiles(folder->left);
+  Serial.print("File ");
   Serial.println(folder->key->buffer);
   showFiles(folder->right);
 }
@@ -241,6 +246,16 @@ void processCd(struct Vector *argv, struct Vector *folders) {
   Serial.println("No such directory exists!");
 }
 
+void touch(struct Vector *args) {
+  if(args->size != 2) {
+    printf("Wrong number of args!\n");
+  }
+  else {
+    struct Vector **arge = (struct Vector **)args->buffer;
+    fd_AddFileTree(currentFolder, str_Init((char *)arge[1]->buffer), str_Init((char *)""));
+  }
+}
+
 String readInstruction() {
   String response = "";
   if(Serial.available() > 0) {
@@ -308,6 +323,7 @@ void ls() {
   struct FileTree_t **cfl = (struct FileTree_t **)((struct Vector *)folders)->buffer;
   for(int32_t i = 0; i < folders->size; i++) {
     struct FileTree_t *cFolder = cfl[i];
+    Serial.print("Dir ");
     Serial.println(cFolder->folderName->buffer);
   }
   showFiles(currentFolder->files);
@@ -324,6 +340,9 @@ void recieveInstruction(struct StringElement *instruction, struct Vector *args) 
   if(!strcmp((char *)arge[0]->buffer, "cd")) {
     processCd(args, currentFolder->child);
     where();
+  }
+  if(!strcmp((char *)arge[0]->buffer, "touch")) {
+    touch(args);
   }
 }
 
