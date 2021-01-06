@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.sketch": "c",
+    "cstdio": "c",
+    "xstring": "c"
+  }
+}
