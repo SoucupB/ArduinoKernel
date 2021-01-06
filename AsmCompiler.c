@@ -74,6 +74,11 @@ void vct_PushElement(struct Vector *vct, void *element) {
   vct->size++;
 }
 
+void str_Delete(struct StringElement *self) {
+  free(self->buffer);
+  free(self);
+}
+
 void vct_Push(struct Vector *vct, void *element) {
   if(vct->size >= vct->capacity) {
     vct->capacity += 5;
@@ -230,6 +235,16 @@ void touch(struct Vector *args) {
   }
 }
 
+void mkdir(struct Vector *args) {
+  if(args->size != 2) {
+    printf("Wrong number of args!\n");
+  }
+  else {
+    struct Vector **arge = (struct Vector **)args->buffer;
+    createSubfolder(currentFolder, str_Init((char *)arge[1]->buffer));
+  }
+}
+
 void testing() {
   struct FileTree_t *folder = createSubfolder(currentFolder, str_Init((char *)"Programfiles"));
   fd_AddFileTree(currentFolder, str_Init((char *)"personal.txt"), str_Init((char *)"Go to buy some milk!"));
@@ -309,6 +324,9 @@ void recieveInstruction(struct StringElement *instruction, struct Vector *args) 
   if(!strcmp((char *)arge[0]->buffer, "touch")) {
     touch(args);
   }
+  if(!strcmp((char *)arge[0]->buffer, "mkdir")) {
+    mkdir(args);
+  }
 }
 
 void processCommander(struct StringElement *element) {
@@ -326,7 +344,16 @@ int main() {
   setup();
   processCommander(str_Init((char *)"where"));
   processCommander(str_Init((char *)"ls"));
-  processCommander(str_Init((char *)"touch ogica.txt"));
+  processCommander(str_Init((char *)"touch test.txt"));
+  processCommander(str_Init((char *)"ls"));
+  processCommander(str_Init((char *)"mkdir NewDir"));
+  processCommander(str_Init((char *)"ls"));
+  processCommander(str_Init((char *)"cd NewDir"));
+  processCommander(str_Init((char *)"touch test1.txt"));
+  processCommander(str_Init((char *)"touch test2.txt"));
+  processCommander(str_Init((char *)"touch test3.txt"));
+  processCommander(str_Init((char *)"touch test4.txt"));
+  processCommander(str_Init((char *)"mkdir Poze"));
   processCommander(str_Init((char *)"ls"));
   //struct StringElement *arg = str_Init((char *)"ls");
  // recieveInstruction(arg, arguments(arg));

@@ -84,6 +84,11 @@ struct StringElement *str_Init(char *buffer) {
   return self;
 }
 
+void str_Delete(struct StringElement *self) {
+  free(self->buffer);
+  free(self);
+}
+
 void initCommands() {
   instructions[0] = str_Init((char *)"cd");
   instructions[1] = str_Init((char *)"ls");
@@ -248,11 +253,21 @@ void processCd(struct Vector *argv, struct Vector *folders) {
 
 void touch(struct Vector *args) {
   if(args->size != 2) {
-    printf("Wrong number of args!\n");
+    Serial.println("Wrong number of args!");
   }
   else {
     struct Vector **arge = (struct Vector **)args->buffer;
     fd_AddFileTree(currentFolder, str_Init((char *)arge[1]->buffer), str_Init((char *)""));
+  }
+}
+
+void mkdir(struct Vector *args) {
+  if(args->size != 2) {
+    printf("Wrong number of args!\n");
+  }
+  else {
+    struct Vector **arge = (struct Vector **)args->buffer;
+    createSubfolder(currentFolder, str_Init((char *)arge[1]->buffer));
   }
 }
 
@@ -344,6 +359,9 @@ void recieveInstruction(struct StringElement *instruction, struct Vector *args) 
   if(!strcmp((char *)arge[0]->buffer, "touch")) {
     touch(args);
   }
+  if(!strcmp((char *)arge[0]->buffer, "mkdir")) {
+    mkdir(args);
+  }
 }
 
 void loop() {
@@ -358,6 +376,6 @@ void loop() {
       Serial.println(response);
       recieveInstruction(buf, arguments(buf));
     }
-    free(buf);
+    str_Delete(buf);
   }
 }
