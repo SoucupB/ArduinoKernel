@@ -180,20 +180,20 @@ struct StringElement *strConcat(struct StringElement *src1, struct StringElement
 }
 
 struct StringElement *getInstr(struct StringElement *instr) {
-  char *tempBuffer = (char *)malloc(16);
+  char *tempBuffer = (char *)malloc(10);
   int8_t index = 0;
-  memset(tempBuffer, 0, 16);
+  memset(tempBuffer, 0, 10);
   for(int8_t i = 0; instr->buffer[i] != ' ' && i < instr->sz; i++) {
     tempBuffer[index++] = instr->buffer[i];
   }
+  struct StringElement *resource = str_Init(tempBuffer);
   free(tempBuffer);
-  return str_Init(tempBuffer);
+  return resource;
 }
 
 struct Vector *arguments(struct StringElement *instruction) {
   struct Vector *argve = vct_Init(sizeof(struct Vector *));
   for(int8_t i = 0; i < instruction->sz; i++) {
-
     char *tempBuffer = (char *)malloc(16);
     int8_t index = 0;
     memset(tempBuffer, 0, 16);
@@ -265,10 +265,14 @@ void testing() {
   createSubfolder(movies, str_Init((char *)"SF"));
 }
 
+uint8_t str_Compare(struct StringElement *a, struct StringElement *b) {
+  return a->sz == b->sz && !strncmp(a->buffer, b->buffer, a->sz);
+}
+
 uint8_t isInstructionAcceptable(struct StringElement *instr) {
   struct StringElement *getArgInst = getInstr(instr);
   for(int8_t i = 0; i < instrLength; i++) {
-    if(instructions[i] == getArgInst) {
+    if(str_Compare(getArgInst, instructions[i])) {
       free(getArgInst);
       return 1;
     }
@@ -294,7 +298,7 @@ void where() {
   for(int32_t i = 0; i < folderStack->size; i++) {
     struct FileTree_t *cFolder = stack[i];
     Serial.print(cFolder->folderName->buffer);
-    Serial.println("/");
+    Serial.print("/");
   }
   Serial.println();
 }
