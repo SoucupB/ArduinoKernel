@@ -58,7 +58,7 @@ struct FileTree_t {
 };
 struct FileTree_t *currentFolder;
 struct Vector *folderStack;
-uint8_t str_Compare(struct StringElement *a, struct StringElement *b);
+uint8_t str_Equal(struct StringElement *a, struct StringElement *b);
 
 struct Vector *vct_Init(int8_t elementSize) {
   struct Vector *self = (struct Vector *)malloc(sizeof(struct Vector));
@@ -121,10 +121,10 @@ struct FileContent_t *tr_AddFile(struct FileContent_t *file, struct StringElemen
     self->value = content;
     return self;
   }
-  if(str_Compare(file->key, fileName)) {
+  if(str_Equal(file->key, fileName)) {
     return file;
   }
-  if(strcmp(file->key->buffer, fileName->buffer)) {
+  if(strcmp(file->key->buffer, fileName->buffer) > 0) {
     file->left = tr_AddFile(file->left, fileName, content);
   }
   else {
@@ -157,10 +157,10 @@ struct StringElement *tr_Find(struct FileContent_t *self, struct StringElement *
   if(!self) {
     return str_Init((char *)"No such file exists!");
   }
-  if(!strcmp(self->key->buffer, fileName->buffer)) {
+  if(str_Equal(self->key, fileName)) {
     return self->value;
   }
-  if(self->key > fileName) {
+  if(strcmp(self->key->buffer, fileName->buffer) > 0) {
     return tr_Find(self->left, fileName);
   }
   return tr_Find(self->right, fileName);
@@ -280,14 +280,14 @@ void testing() {
   createSubfolder(movies, str_Init((char *)"SF"));
 }
 
-uint8_t str_Compare(struct StringElement *a, struct StringElement *b) {
+uint8_t str_Equal(struct StringElement *a, struct StringElement *b) {
   return a->sz == b->sz && !strncmp(a->buffer, b->buffer, a->sz);
 }
 
 uint8_t isInstructionAcceptable(struct StringElement *instr) {
   struct StringElement *getArgInst = getInstr(instr);
   for(int8_t i = 0; i < instrLength; i++) {
-    if(str_Compare(getArgInst, instructions[i])) {
+    if(str_Equal(getArgInst, instructions[i])) {
       free(getArgInst);
       return 1;
     }
