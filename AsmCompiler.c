@@ -236,9 +236,11 @@ uint8_t isInstructionAcceptable(struct StringElement *instr) {
   struct StringElement *getArgInst = getInstr(instr);
   for(int8_t i = 0; i < instrLength; i++) {
     if(instructions[i] == getArgInst) {
+      free(getArgInst);
       return 1;
     }
   }
+  free(getArgInst);
   return 0;
 }
 

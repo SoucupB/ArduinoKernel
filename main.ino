@@ -1,13 +1,35 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <iostream>
-
-#define Serialprintln(a) printf("%s\n", a);
-
-using namespace std;
-
+/*
+  LiquidCrystal Library - Hello World
+ Demonstrates the use a 16x2 LCD display.  The LiquidCrystal
+ library works with all LCD displays that are compatible with the
+ Hitachi HD44780 driver. There are many of them out there, and you
+ can usually tell them by the 16-pin interface.
+ This sketch prints "Hello World!" to the LCD
+ and shows the time.
+  The circuit:
+ * LCD RS pin to digital pin 12
+ * LCD Enable pin to digital pin 11
+ * LCD D4 pin to digital pin 5
+ * LCD D5 pin to digital pin 4
+ * LCD D6 pin to digital pin 3
+ * LCD D7 pin to digital pin 2
+ * LCD R/W pin to ground
+ * LCD VSS pin to ground
+ * LCD VCC pin to 5V
+ * 10K resistor:
+ * ends to +5V and ground
+ * wiper to LCD VO pin (pin 3)
+ Library originally added 18 Apr 2008
+ by David A. Mellis
+ library modified 5 Jul 2009
+ by Limor Fried (http://www.ladyada.net)
+ example added 9 Jul 2009
+ by Tom Igoe
+ modified 22 Nov 2010
+ by Tom Igoe
+ This example code is in the public domain.
+ http://www.arduino.cc/en/Tutorial/LiquidCrystal
+ */
 struct Vector {
   void *buffer;
   int32_t capacity;
@@ -61,7 +83,7 @@ struct StringElement *str_Init(char *buffer) {
   return self;
 }
 
-void init() {
+void initCommands() {
   instructions[0] = str_Init((char *)"cd");
   instructions[1] = str_Init((char *)"ls");
   instructions[2] = str_Init((char *)"touch");
@@ -78,7 +100,7 @@ void vct_PushElement(struct Vector *vct, void *element) {
 
 void vct_Push(struct Vector *vct, void *element) {
   if(vct->size >= vct->capacity) {
-    vct->capacity += 64;
+    vct->capacity += 5;
     void *buffer = malloc(vct->elementsSize * vct->capacity);
     memcpy(buffer, vct->buffer, vct->size * vct->elementsSize);
     free(vct->buffer);
@@ -115,7 +137,6 @@ void fd_AddFileTree(struct FileTree_t* folder,
 struct FileTree_t *fd_Init(struct StringElement *folderName) {
   struct FileTree_t *self = (struct FileTree_t*)malloc(
     						              sizeof(struct FileTree_t));
-  Serialprintln(&folderName->buffer[0]);
   self->folderName = folderName;
   self->files = 0;
   self->child = vct_Init(sizeof(struct FileTree_t *));
@@ -132,13 +153,22 @@ struct StringElement *tr_Find(struct FileContent_t *self, struct StringElement *
   if(!self) {
     return str_Init((char *)"No such file exists!");
   }
-  if(self->key == fileName) {
+  if(!strcmp(self->key->buffer, fileName->buffer)) {
     return self->value;
   }
   if(self->key > fileName) {
     return tr_Find(self->left, fileName);
   }
   return tr_Find(self->right, fileName);
+}
+
+void showFiles(struct FileContent_t* folder) {
+  if(!folder) {
+    return ;
+  }
+  showFiles(folder->left);
+  Serial.println(folder->key->buffer);
+  showFiles(folder->right);
 }
 
 struct StringElement *fd_GetFileContent(struct FileTree_t* file, struct StringElement *fileName) {
@@ -189,14 +219,14 @@ void showArguments(struct Vector *argve) {
   struct Vector **args = (struct Vector **)argve->buffer;
   for(int8_t i = 0; i < argve->size; i++) {
     char *buffer = (char *)args[i]->buffer;
-    Serialprintln(buffer);
+    Serial.println(buffer);
   }
 }
 
 void processCd(struct Vector *argv, struct Vector *folders) {
   struct Vector **args = (struct Vector **)argv->buffer;
   if(argv->size != 2) {
-    Serialprintln("Invalid number of arguments for CD");
+    Serial.println("Invalid number of arguments for CD");
     return ;
   }
   char *buffer = (char *)args[1]->buffer;
@@ -208,16 +238,26 @@ void processCd(struct Vector *argv, struct Vector *folders) {
       return ;
     }
   }
-  Serialprintln("No such directory exists!");
+  Serial.println("No such directory exists!");
+}
+
+String readInstruction() {
+  String response = "";
+  if(Serial.available() > 0) {
+  	response = Serial.readString();
+  }
+  return response;
 }
 
 void testing() {
   struct FileTree_t *folder = createSubfolder(currentFolder, str_Init((char *)"Programfiles"));
- // fd_AddFileTree(currentFolder, str_Init("personal.txt", str_Init("Go to buy some milk!");
+  fd_AddFileTree(currentFolder, str_Init((char *)"personal.txt"), str_Init((char *)"Go to buy some milk!"));
   createSubfolder(folder, str_Init((char *)"Projects"));
- // fd_AddFileTree(currentFolder, str_Init("toDo.txt", str_Init("Finish some homework!");
- // fd_AddFileTree(currentFolder, str_Init("Pancakes.txt", str_Init("DDAA!");
- // Serialprintln(fd_GetFileContent(currentFolder, str_Init("Pancakes.txt"));
+  createSubfolder(folder, str_Init((char *)"Disfunction"));
+  createSubfolder(folder, str_Init((char *)"Maps"));
+  fd_AddFileTree(currentFolder, str_Init((char *)"toDo.txt"), str_Init("Finish some homework!"));
+  fd_AddFileTree(currentFolder, str_Init((char *)"Pancakes.txt"), str_Init("DDAA!"));
+  //printf("%s\n", (fd_GetFileContent(currentFolder, str_Init("Pancakes.txt")))->buffer);
   createSubfolder(currentFolder, str_Init((char *)"Music"));
   struct FileTree_t *movies = createSubfolder(currentFolder, str_Init((char *)"Movies"));
   createSubfolder(movies, str_Init((char *)"Action"));
@@ -229,42 +269,44 @@ uint8_t isInstructionAcceptable(struct StringElement *instr) {
   struct StringElement *getArgInst = getInstr(instr);
   for(int8_t i = 0; i < instrLength; i++) {
     if(instructions[i] == getArgInst) {
+      free(getArgInst);
       return 1;
     }
   }
+  free(getArgInst);
   return 0;
 }
 
 void setup() {
-  //Serial.begin(9600);
+  Serial.begin(9600);
   struct StringElement *parentDirectory = str_Init((char *)"C:");
-  init();
-  Serialprintln("Started!");
+  initCommands();
+  Serial.println("Started!");
   folderStack = vct_Init(sizeof(struct FileTree_t *));
   currentFolder = fd_Init(parentDirectory);
-  Serialprintln("DAFAFA");
   testing();
   vct_Push(folderStack, &currentFolder);
-  Serialprintln("Done");
+  Serial.println("Done");
 }
 
 void where() {
   struct FileTree_t **stack = ((struct FileTree_t **)folderStack->buffer);
   for(int32_t i = 0; i < folderStack->size; i++) {
     struct FileTree_t *cFolder = stack[i];
-    printf("%s\n", cFolder->folderName->buffer);
-    printf("/");
+    Serial.print(cFolder->folderName->buffer);
+    Serial.println("/");
   }
+  Serial.println();
 }
 
 void ls() {
-  struct FileTree_t **stack = ((struct FileTree_t **)currentFolder->child);
-  for(int32_t i = 0; i < currentFolder->child->size; i++) {
-    struct FileTree_t *cFolder = stack[i];
-    Serialprintln(cFolder->folderName->sz);
-    Serialprintln(cFolder->folderName->buffer);
-    printf("/");
+  struct Vector *folders = ((struct Vector *)currentFolder->child);
+  struct FileTree_t **cfl = (struct FileTree_t **)((struct Vector *)folders)->buffer;
+  for(int32_t i = 0; i < folders->size; i++) {
+    struct FileTree_t *cFolder = cfl[i];
+    Serial.println(cFolder->folderName->buffer);
   }
+  showFiles(currentFolder->files);
 }
 
 void recieveInstruction(struct StringElement *instruction, struct Vector *args) {
@@ -281,8 +323,18 @@ void recieveInstruction(struct StringElement *instruction, struct Vector *args) 
   }
 }
 
-int main() {
-  setup();
-  struct StringElement *argument = str_Init((char *)"where");
-  recieveInstruction(argument, arguments(argument));
+void loop() {
+  char incomingByte = 0;
+  String response = readInstruction();
+  if(response != "") {
+    struct StringElement *buf = str_Init(&response[0]);
+    if(!isInstructionAcceptable(buf)) {
+      Serial.println("Unknown instruction: " + response);
+    }
+    else {
+      Serial.println(response);
+      recieveInstruction(buf, arguments(buf));
+    }
+    free(buf);
+  }
 }
