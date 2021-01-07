@@ -32,8 +32,8 @@
  */
 struct Vector {
   void *buffer;
-  int32_t capacity;
-  int32_t size;
+  int8_t capacity;
+  int8_t size;
   int8_t elementsSize;
 };
 
@@ -41,8 +41,8 @@ struct StringElement {
   char *buffer;
   int8_t sz;
 };
-int8_t instrLength = 7;
-struct StringElement *instructions[7];
+int8_t instrLength = 8;
+struct StringElement *instructions[8];
 
 struct FileContent_t {
   struct StringElement *key;
@@ -97,6 +97,7 @@ void initCommands() {
   instructions[4] = str_Init((char *)"mkdir");
   instructions[5] = str_Init((char *)"write");
   instructions[6] = str_Init((char *)"where");
+  instructions[7] = str_Init((char *)"check");
 }
 
 void vct_PushElement(struct Vector *vct, void *element) {
@@ -127,6 +128,8 @@ struct FileContent_t *tr_AddFile(struct FileContent_t *file, struct StringElemen
     return self;
   }
   if(str_Equal(file->key, fileName)) {
+    str_Delete(file->value);
+    file->value = content;
     return file;
   }
   if(strcmp(file->key->buffer, fileName->buffer) > 0) {
@@ -201,6 +204,24 @@ struct StringElement *getInstr(struct StringElement *instr) {
   return resource;
 }
 
+struct StringElement *getPhrase(struct StringElement *instruction, int8_t *index) {
+  char *tempBuffer = (char *)malloc(80);
+  memset(tempBuffer, 0, 80);
+  if(*index < instruction->sz && instruction->buffer[*index] != 39) {
+    free(tempBuffer);
+    return NULL;
+  }
+  int8_t ind = 0;
+  (*index)++;
+  while(*index < instruction->sz && instruction->buffer[*index] != 39) {
+    tempBuffer[ind++] = instruction->buffer[(*index)++];
+  }
+  (*index)++;
+  struct StringElement *buffer = str_Init(tempBuffer);
+  free(tempBuffer);
+  return buffer;
+}
+
 struct Vector *arguments(struct StringElement *instruction) {
   struct Vector *argve = vct_Init(sizeof(struct Vector *));
   for(int8_t i = 0; i < instruction->sz; i++) {
@@ -208,11 +229,18 @@ struct Vector *arguments(struct StringElement *instruction) {
     int8_t index = 0;
     memset(tempBuffer, 0, 16);
     struct Vector *arg = vct_Init(sizeof(char *));
-    while(i < instruction->sz && instruction->buffer[i] != ' ') {
-      tempBuffer[index++] = instruction->buffer[i];
-      i++;
+    struct StringElement *phrase = getPhrase(instruction, &i);
+    struct StringElement *argument;
+    if(phrase) {
+      argument = phrase;
     }
-    struct StringElement *argument = str_Init(tempBuffer);
+    else {
+      while(i < instruction->sz && instruction->buffer[i] != ' ') {
+        tempBuffer[index++] = instruction->buffer[i];
+        i++;
+      }
+      argument = str_Init(tempBuffer);
+    }
     free(tempBuffer);
     char *heapAllocator = (char *)malloc(argument->sz + 1);
     memset(heapAllocator, 0, argument->sz + 1);
@@ -220,6 +248,7 @@ struct Vector *arguments(struct StringElement *instruction) {
     arg->buffer = heapAllocator;
     arg->size = argument->sz;
     arg->capacity = argument->sz;
+    str_Delete(argument);
     vct_Push(argve, &arg);
   }
   return argve;
@@ -344,6 +373,25 @@ void ls() {
   showFiles(currentFolder->files);
 }
 
+void write(struct Vector *args) {
+  if(args->size != 3) {
+    printf("Wrong number of args!\n");
+  }
+  else {
+    struct Vector **arge = (struct Vector **)args->buffer;
+    fd_AddFileTree(currentFolder, str_Init((char *)arge[1]->buffer), str_Init((char *)arge[2]->buffer));
+  }
+}
+
+void args_Delete(struct Vector *args) {
+  struct Vector **arge = (struct Vector **)args->buffer;
+  for(int8_t i = 0; i < args->size; i++) {
+    free(arge[i]->buffer);
+  }
+  free(args->buffer);
+  free(args);
+}
+
 void recieveInstruction(struct StringElement *instruction, struct Vector *args) {
   struct Vector **arge = (struct Vector **)args->buffer;
   if(!strcmp((char *)arge[0]->buffer, "where")) {
@@ -362,6 +410,10 @@ void recieveInstruction(struct StringElement *instruction, struct Vector *args) 
   if(!strcmp((char *)arge[0]->buffer, "mkdir")) {
     mkdir(args);
   }
+  if(!strcmp((char *)arge[0]->buffer, "write")) {
+    write(args);
+  }
+  args_Delete(args);
 }
 
 void loop() {
