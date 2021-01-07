@@ -87,7 +87,7 @@ void vct_Push(struct Vector *vct, void *element) {
 }
 
 struct FileContent_t *tr_AddFile(struct FileContent_t *file, struct StringElement *fileName,
-                  				       struct StringElement *content) {
+                  				       struct StringElement *content, int8_t *isModifiedValue, int8_t *isModifiedKey) {
   if(!file) {
     struct FileContent_t *self = (struct FileContent_t *)malloc
       							 (sizeof(struct FileContent_t));
@@ -95,25 +95,36 @@ struct FileContent_t *tr_AddFile(struct FileContent_t *file, struct StringElemen
     self->right = 0;
     self->key = fileName;
     self->value = content;
+    *isModifiedKey = 1;
+    *isModifiedValue = 1;
     return self;
   }
   if(str_Equal(file->key, fileName)) {
     str_Delete(file->value);
     file->value = content;
+    *isModifiedValue = 1;
     return file;
   }
   if(strcmp(file->key->buffer, fileName->buffer) > 0) {
-    file->left = tr_AddFile(file->left, fileName, content);
+    file->left = tr_AddFile(file->left, fileName, content, isModifiedValue, isModifiedKey);
   }
   else {
-    file->right = tr_AddFile(file->right, fileName, content);
+    file->right = tr_AddFile(file->right, fileName, content, isModifiedValue, isModifiedKey);
   }
   return file;
 }
 
 void fd_AddFileTree(struct FileTree_t* folder,
                     struct StringElement *fileName, struct StringElement *content) {
-  folder->files = tr_AddFile(folder->files, fileName, content);
+  int8_t isModifiedValue = 0;
+  int8_t isModifiedKey = 0;
+  folder->files = tr_AddFile(folder->files, fileName, content, &isModifiedValue, &isModifiedKey);
+  if(!isModifiedValue) {
+    str_Delete(content);
+  }
+  if(!isModifiedKey) {
+    str_Delete(fileName);
+  }
 }
 
 struct FileTree_t *fd_Init(struct StringElement *folderName) {
@@ -131,12 +142,15 @@ struct FileTree_t *createSubfolder(struct FileTree_t* folder, struct StringEleme
   return newFolder;
 }
 
-struct StringElement *tr_Find(struct FileContent_t *self, struct StringElement *fileName) {
+struct FileContent_t *tr_Find(struct FileContent_t *self, struct StringElement *fileName) {
   if(!self) {
-    return str_Init((char *)"No such file exists!");
+    struct StringElement *element = str_Init((char *)"No such file exists!");
+    printf("%s\n", element->buffer);
+    str_Delete(element);
+    return NULL;
   }
   if(str_Equal(self->key, fileName)) {
-    return self->value;
+    return self;
   }
   if(strcmp(self->key->buffer, fileName->buffer) > 0) {
     return tr_Find(self->left, fileName);
@@ -153,7 +167,7 @@ void showFiles(struct FileContent_t* folder) {
   showFiles(folder->right);
 }
 
-struct StringElement *fd_GetFileContent(struct FileTree_t* file, struct StringElement *fileName) {
+struct FileContent_t *fd_GetFileContent(struct FileTree_t* file, struct StringElement *fileName) {
   return tr_Find(file->files, fileName);
 }
 
@@ -339,8 +353,25 @@ void write(struct Vector *args) {
   }
   else {
     struct Vector **arge = (struct Vector **)args->buffer;
-    fd_AddFileTree(currentFolder, str_Init(arge[1]->buffer), str_Init(arge[2]->buffer));
-   // createSubfolder(currentFolder, str_Init((char *)arge[1]->buffer));
+    fd_AddFileTree(currentFolder, str_Init((char *)arge[1]->buffer), str_Init((char *)arge[2]->buffer));
+  }
+}
+
+void check(struct Vector *args) {
+  if(args->size != 2) {
+    printf("Wrong number of args!\n");
+  }
+  else {
+    struct Vector **arge = (struct Vector **)args->buffer;
+    struct StringElement *elem = str_Init((char *)arge[1]->buffer);
+    struct FileContent_t *ft = fd_GetFileContent(currentFolder, elem);
+    if(ft) {
+      printf("%s\n", ft->value->buffer);
+    }
+    else {
+      printf("File not found!\n");
+    }
+    str_Delete(elem);
   }
 }
 
@@ -374,6 +405,9 @@ void recieveInstruction(struct StringElement *instruction, struct Vector *args) 
   if(!strcmp((char *)arge[0]->buffer, "write")) {
     write(args);
   }
+  if(!strcmp((char *)arge[0]->buffer, "check")) {
+    check(args);
+  }
   args_Delete(args);
 }
 
@@ -386,15 +420,11 @@ void processCommander(struct StringElement *element) {
   else {
     printf("Not good!\n");
   }
+  str_Delete(element);
   printf("\n");
 }
 
-int main() {
-  setup();
-//  processCommander(str_Init((char *)"where"));
- // processCommander(str_Init((char *)"ls"));
-
-  //processCommander(str_Init((char *)"touch test.txt 'ana are mere'"));
+void firstTest() {
   processCommander(str_Init((char *)"ls"));
   processCommander(str_Init((char *)"mkdir NewDir"));
   processCommander(str_Init((char *)"ls"));
@@ -405,6 +435,16 @@ int main() {
   processCommander(str_Init((char *)"touch test4.txt"));
   processCommander(str_Init((char *)"mkdir Poze"));
   processCommander(str_Init((char *)"ls"));
-  //struct StringElement *arg = str_Init((char *)"ls");
-  //recieveInstruction(arg, arguments(arg));
+}
+
+void checkFileTest() {
+  processCommander(str_Init((char *)"ls"));
+  processCommander(str_Init((char *)"write Pancakes.txt 'new text ofcourse'"));
+  processCommander(str_Init((char *)"check Pancakes.txt"));
+}
+
+int main() {
+  setup();
+  checkFileTest();
+ // firstTest();
 }
