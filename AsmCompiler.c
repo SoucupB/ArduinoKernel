@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include "AsmCompiler.h"
 
 #define Serialprintln(a) printf("%s\n", a);
 
@@ -18,7 +19,6 @@ struct StringElement {
 };
 int8_t instrLength = 8;
 struct StringElement *instructions[8];
-uint8_t str_Equal(struct StringElement *a, struct StringElement *b);
 
 struct FileContent_t {
   struct StringElement *key;
@@ -42,6 +42,11 @@ struct Vector *vct_Init(int8_t elementSize) {
   self->size = 0;
   self->elementsSize = elementSize;
   return self;
+}
+
+void vct_Delete(struct Vector *self) {
+  free(self->buffer);
+  free(self);
 }
 
 struct StringElement *str_Init(char *buffer) {
@@ -422,29 +427,4 @@ void processCommander(struct StringElement *element) {
   }
   str_Delete(element);
   printf("\n");
-}
-
-void firstTest() {
-  processCommander(str_Init((char *)"ls"));
-  processCommander(str_Init((char *)"mkdir NewDir"));
-  processCommander(str_Init((char *)"ls"));
-  processCommander(str_Init((char *)"cd NewDir"));
-  processCommander(str_Init((char *)"touch test1.txt"));
-  processCommander(str_Init((char *)"touch test2.txt"));
-  processCommander(str_Init((char *)"touch test3.txt"));
-  processCommander(str_Init((char *)"touch test4.txt"));
-  processCommander(str_Init((char *)"mkdir Poze"));
-  processCommander(str_Init((char *)"ls"));
-}
-
-void checkFileTest() {
-  processCommander(str_Init((char *)"ls"));
-  processCommander(str_Init((char *)"write Pancakes.txt 'new text ofcourse'"));
-  processCommander(str_Init((char *)"check Pancakes.txt"));
-}
-
-int main() {
-  setup();
-  checkFileTest();
- // firstTest();
 }
