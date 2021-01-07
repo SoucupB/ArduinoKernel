@@ -49,6 +49,7 @@ struct KeyWordsPair {
 #define CALL 0x18
 #define UNDEFINED -0x1
 
+
 struct KeyWordsPair keywords[12];
 
 void initKeyWords() {
@@ -174,12 +175,118 @@ void *compile(struct StringElement *buffer) {
   return byteStream;
 }
 
-void run(void *byteStream) {
+int16_t operation(void *byteStream, void *memory, int16_t index, int8_t registerInd, int8_t operation) {
+  int8_t operand = ((int8_t *)byteStream)[index + 1];
+  if(operand == NUMBER) {
+    index++;
+    if(registerInd < 0x10) {
+      int32_t number = *((int16_t *)(byteStream + (++index)));
+      int32_t registerContent = *(int32_t *)(memory + registerInd);
+      int32_t regNumber;
+      if(!operation) {
+        regNumber = registerContent + number;
+      }
+      else {
+        regNumber = registerContent - number;
+      }
+      memcpy(memory + registerInd, &regNumber, sizeof(int32_t));
+    }
+    else if(registerInd < 0x14) {
+      int8_t number = *((int16_t *)(byteStream + (++index)));
+      int8_t registerContent = *(int8_t *)(memory + registerInd);
+      int8_t regNumber;
+      if(!operation) {
+        regNumber = registerContent + number;
+      }
+      else {
+        regNumber = registerContent - number;
+      }
+      memcpy(memory + registerInd, &regNumber, sizeof(int8_t));
+    }
+    else {
+      return UNDEFINED;
+    }
+    index += 2;
+  }
+  if(operand < 0x14) {
+    if(registerInd < 0x10 && operand < 0x10) {
+      int32_t firstReg = *(int8_t *)(memory + registerInd);
+      int32_t secondReg = *(int8_t *)(memory + operand);
+      int32_t regNumber;
+      if(!operation) {
+        regNumber = firstReg + secondReg;
+      }
+      else {
+        regNumber = firstReg - secondReg;
+      }
+      memcpy(memory + registerInd, &regNumber, sizeof(int32_t));
+      index++;
+    }
+    else if(registerInd >= 0x10 && operand >= 0x10) {
+      int8_t firstReg = *(int8_t *)(memory + registerInd);
+      int8_t secondReg = *(int8_t *)(memory + operand);
+      int8_t regNumber;
+      if(!operation) {
+        regNumber = firstReg + secondReg;
+      }
+      else {
+        regNumber = firstReg - secondReg;
+      }
+      memcpy(memory + registerInd, &regNumber, sizeof(int8_t));
+      index++;
+    }
+    else {
+      printf("Cannot cast registers of different types!\n");
+      return UNDEFINED;
+    }
+  }
+  return index;
+}
 
+int8_t additionSubstractionInstr(void *byteStream, void *memory, int16_t *index) {
+  int16_t i = *index;
+  int8_t instruction = ((int8_t *)byteStream)[i];
+  if(instruction == ADD || instruction == SUB) {
+    i++;
+    int8_t operationType = (instruction == ADD ? 0 : 1);
+    instruction = ((int8_t *)byteStream)[i];
+    if(instruction == EAX || instruction == EDX || instruction == EBX || instruction == ECX ||
+        instruction == AX || instruction == BX || instruction == DX || instruction == FX) {
+        i = operation(byteStream, memory, i, instruction, operationType);
+        if(i == UNDEFINED) {
+          return -1;
+        }
+    }
+    else {
+      printf("Seg fault can only write to registers!\n");
+      return -1;
+    }
+  }
+  return 0;
+}
+
+void run(void *byteStream) {
+  int16_t i = 0;
+  const int16_t memorySize = 400;
+  void *memory = malloc(memorySize);
+  memset(memory, 0, memorySize);
+  for(;;) {
+    int8_t instruction = ((int8_t *)byteStream)[i];
+    if(instruction == UNDEFINED) {
+      break;
+    }
+    int8_t response = additionSubstractionInstr(byteStream, memory, &i);
+    if(response < 0) {
+      return ;
+    }
+    i++;
+  }
+  free(memory);
 }
 
 
 int main() {
   initKeyWords();
-  compile(str_Init((char *)"add eax 343;sub eax edx;add edx ebx;mov eax edx"));
+  void *byteStream = compile(str_Init((char *)"add eax 343;add edx 10;sub eax edx;add edx ebx;mov eax edx"));
+  run(byteStream);
 }
