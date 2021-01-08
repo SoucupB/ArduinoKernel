@@ -210,8 +210,8 @@ int16_t operation(void *byteStream, void *memory, int16_t index, int8_t register
   }
   if(operand < 0x14) {
     if(registerInd < 0x10 && operand < 0x10) {
-      int32_t firstReg = *(int8_t *)(memory + registerInd);
-      int32_t secondReg = *(int8_t *)(memory + operand);
+      int32_t firstReg = *(int32_t *)(memory + registerInd);
+      int32_t secondReg = *(int32_t *)(memory + operand);
       int32_t regNumber;
       if(!operation) {
         regNumber = firstReg + secondReg;
@@ -220,7 +220,7 @@ int16_t operation(void *byteStream, void *memory, int16_t index, int8_t register
         regNumber = firstReg - secondReg;
       }
       memcpy(memory + registerInd, &regNumber, sizeof(int32_t));
-      index++;
+      index += 2;
     }
     else if(registerInd >= 0x10 && operand >= 0x10) {
       int8_t firstReg = *(int8_t *)(memory + registerInd);
@@ -233,7 +233,7 @@ int16_t operation(void *byteStream, void *memory, int16_t index, int8_t register
         regNumber = firstReg - secondReg;
       }
       memcpy(memory + registerInd, &regNumber, sizeof(int8_t));
-      index++;
+      index += 2;
     }
     else {
       printf("Cannot cast registers of different types!\n");
@@ -241,6 +241,43 @@ int16_t operation(void *byteStream, void *memory, int16_t index, int8_t register
     }
   }
   return index;
+}
+
+int8_t mov(void *byteStream, void *memory, int16_t *index) {
+  int16_t i = *index;
+  int8_t instruction = ((int8_t *)byteStream)[i];
+  if(instruction == MOV) {
+    i++;
+    int8_t fRegister = ((int8_t *)byteStream)[i];
+    if(fRegister >= 0x14) {
+      return UNDEFINED;
+    }
+    i++;
+    int8_t instruction = ((int8_t *)byteStream)[i];
+    if(instruction == NUMBER) {
+      if(fRegister < 0x10) {
+        int32_t number = *(int16_t *)(memory + i);
+        memcpy(memory + fRegister, &number, sizeof(int32_t));
+      }
+      else {
+        int8_t number = *(int16_t *)(memory + i);
+        memcpy(memory + fRegister, &number, sizeof(int8_t));
+      }
+    }
+    else {
+      int8_t sRegister = ((int8_t *)byteStream)[i];
+      if(fRegister < 0x10) {
+        int32_t secondNumber = *(int32_t *)(memory + sRegister);
+        memcpy(memory + fRegister, &secondNumber, sizeof(int32_t));
+      }
+      else {
+        int8_t secondNumber = *(int8_t *)(memory + sRegister);
+        memcpy(memory + fRegister, &secondNumber, sizeof(int8_t));
+      }
+    }
+  }
+  *index = i;
+  return 0;
 }
 
 int8_t additionSubstractionInstr(void *byteStream, void *memory, int16_t *index) {
@@ -254,14 +291,15 @@ int8_t additionSubstractionInstr(void *byteStream, void *memory, int16_t *index)
         instruction == AX || instruction == BX || instruction == DX || instruction == FX) {
         i = operation(byteStream, memory, i, instruction, operationType);
         if(i == UNDEFINED) {
-          return -1;
+          return UNDEFINED;
         }
     }
     else {
       printf("Seg fault can only write to registers!\n");
-      return -1;
+      return UNDEFINED;
     }
   }
+  *index = i;
   return 0;
 }
 
@@ -271,22 +309,31 @@ void run(void *byteStream) {
   void *memory = malloc(memorySize);
   memset(memory, 0, memorySize);
   for(;;) {
+    int8_t lastI = i;
+    int8_t response = additionSubstractionInstr(byteStream, memory, &i);
+    if(response < 0) {
+      free(memory);
+      return ;
+    }
+    response = mov(byteStream, memory, &i);
+    if(response < 0) {
+      free(memory);
+      return ;
+    }
     int8_t instruction = ((int8_t *)byteStream)[i];
     if(instruction == UNDEFINED) {
       break;
     }
-    int8_t response = additionSubstractionInstr(byteStream, memory, &i);
-    if(response < 0) {
+    if(lastI == i) {
+      free(memory);
       return ;
     }
-    i++;
   }
   free(memory);
 }
 
-
 int main() {
   initKeyWords();
-  void *byteStream = compile(str_Init((char *)"add eax 343;add edx 10;sub eax edx;add edx ebx;mov eax edx"));
+  void *byteStream = compile(str_Init((char *)"add eax 343;add edx 10;sub eax edx;mov edx eax;"));
   run(byteStream);
 }
