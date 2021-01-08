@@ -20,8 +20,18 @@ void checkFileTest() {
   processCommander(str_Init((char *)"check Pancakes.txt"));
 }
 
+void testCompiling() {
+  processCommander(str_Init((char *)"ls"));
+  processCommander(str_Init((char *)"touch main.asm"));
+  processCommander(str_Init((char *)"write main.asm 'mov eax 15;mov edx 30;add eax edx;'"));
+  processCommander(str_Init((char *)"ls"));
+  processCommander(str_Init((char *)"compile main.asm"));
+  processCommander(str_Init((char *)"ls"));
+}
+
 int main() {
   setup();
-  checkFileTest();
-  firstTest();
+ // checkFileTest();
+ // firstTest();
+  testCompiling();
 }

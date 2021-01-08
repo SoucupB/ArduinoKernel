@@ -169,9 +169,9 @@ void *compile(struct StringElement *buffer) {
     }
   }
   ((char *)byteStream)[streamIndex] = -1;
-  for(int16_t i = 0; i <= streamIndex; i++) {
-    printf("%d ", ((int8_t *)byteStream)[i]);
-  }
+  // for(int32_t i = 0; i < streamIndex; i++) {
+  //   printf("%d ", ((int8_t *)byteStream)[i]);
+  // }
   return byteStream;
 }
 
@@ -255,14 +255,16 @@ int8_t mov(void *byteStream, void *memory, int16_t *index) {
     i++;
     int8_t instruction = ((int8_t *)byteStream)[i];
     if(instruction == NUMBER) {
+      i++;
       if(fRegister < 0x10) {
-        int32_t number = *(int16_t *)(memory + i);
+        int32_t number = *(int16_t *)(byteStream + i);
         memcpy(memory + fRegister, &number, sizeof(int32_t));
       }
       else {
-        int8_t number = *(int16_t *)(memory + i);
+        int8_t number = *(int16_t *)(byteStream + i);
         memcpy(memory + fRegister, &number, sizeof(int8_t));
       }
+      i += 2;
     }
     else {
       int8_t sRegister = ((int8_t *)byteStream)[i];
@@ -274,6 +276,7 @@ int8_t mov(void *byteStream, void *memory, int16_t *index) {
         int8_t secondNumber = *(int8_t *)(memory + sRegister);
         memcpy(memory + fRegister, &secondNumber, sizeof(int8_t));
       }
+      i += 2;
     }
   }
   *index = i;
@@ -303,6 +306,17 @@ int8_t additionSubstractionInstr(void *byteStream, void *memory, int16_t *index)
   return 0;
 }
 
+void printRegisterState(void *buffer) {
+  printf("EAX %d\n", *(int32_t *)(buffer + EAX));
+  printf("EDX %d\n", *(int32_t *)(buffer + EDX));
+  printf("ECX %d\n", *(int32_t *)(buffer + ECX));
+  printf("EBX %d\n", *(int32_t *)(buffer + EBX));
+  printf("AX %d\n", *(int8_t *)(buffer + AX));
+  printf("BX %d\n", *(int8_t *)(buffer + BX));
+  printf("DX %d\n", *(int8_t *)(buffer + DX));
+  printf("FX %d\n", *(int8_t *)(buffer + FX));
+}
+
 void run(void *byteStream) {
   int16_t i = 0;
   const int16_t memorySize = 400;
@@ -325,15 +339,17 @@ void run(void *byteStream) {
       break;
     }
     if(lastI == i) {
+      printRegisterState(memory);
       free(memory);
       return ;
     }
   }
+  printRegisterState(memory);
   free(memory);
 }
 
 int main() {
   initKeyWords();
-  void *byteStream = compile(str_Init((char *)"add eax 343;add edx 10;sub eax edx;mov edx eax;"));
+  void *byteStream = compile(str_Init((char *)"mov eax 15;mov edx 30;add eax edx;"));
   run(byteStream);
 }

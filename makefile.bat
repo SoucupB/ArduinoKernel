@@ -1,1 +1,1 @@
-gcc main.c AsmCompiler.c Compiler.c -Wall -o program
+gcc main.c AsmCompiler.c -Wall -o program

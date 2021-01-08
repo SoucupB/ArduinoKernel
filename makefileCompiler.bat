@@ -1,1 +1,1 @@
-gcc AsmCompiler.c Compiler.c -Wall -o program
+gcc IndepCompiler.c Compiler.c -Wall -o program
