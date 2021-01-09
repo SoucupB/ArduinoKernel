@@ -1,0 +1,1 @@
+gcc main.c Kernel.c ASMCompiler.c -Wall -o app
