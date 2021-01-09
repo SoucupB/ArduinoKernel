@@ -177,6 +177,16 @@ int16_t getNumber(struct StringElement *element) {
   return sum;
 }
 
+struct StringElement *str_nInit(char *buffer, int8_t size) {
+  int8_t bfSize = size;
+  struct StringElement *self = (struct StringElement *)malloc(sizeof(struct StringElement));
+  self->buffer = (char *)malloc(bfSize + 1);
+  self->buffer[bfSize] = 0;
+  memcpy(self->buffer, buffer, bfSize);
+  self->sz = bfSize;
+  return self;
+}
+
 void getData(struct StringElement *buffer) {
   struct Vector *vector = arguments(buffer);
   struct Vector **arge = (struct Vector **)vector->buffer;
@@ -387,14 +397,22 @@ int8_t additionSubstractionInstr(void *byteStream, void *memory, int16_t *index)
 }
 
 void printRegisterState(void *buffer) {
-  // Serial.println("EAX %d", *(int32_t *)(buffer + EAX));
-  // Serial.println("EDX %d", *(int32_t *)(buffer + EDX));
-  // Serial.println("ECX %d", *(int32_t *)(buffer + ECX));
-  // Serial.println("EBX %d", *(int32_t *)(buffer + EBX));
-  // Serial.println("AX %d", *(int8_t *)(buffer + AX));
-  // Serial.println("BX %d", *(int8_t *)(buffer + BX));
-  // Serial.println("DX %d", *(int8_t *)(buffer + DX));
-  // Serial.println("FX %d", *(int8_t *)(buffer + FX));
+  Serial.println("EAX ");
+  Serial.println(*(int32_t *)(buffer + EAX));
+  Serial.println("EDX ");
+  Serial.println(*(int32_t *)(buffer + EDX));
+  Serial.println("ECX ");
+  Serial.println(*(int32_t *)(buffer + ECX));
+  Serial.println("EBX ");
+  Serial.println(*(int32_t *)(buffer + EBX));
+  Serial.println("AX ");
+  Serial.println(*(int32_t *)(buffer + AX));
+  Serial.println("BX ");
+  Serial.println(*(int32_t *)(buffer + BX));
+  Serial.println("DX ");
+  Serial.println(*(int32_t *)(buffer + DX));
+  Serial.println("FX ");
+  Serial.println(*(int32_t *)(buffer + FX));
 }
 
 void run(void *byteStream) {
@@ -540,6 +558,19 @@ struct StringElement *getExeName(struct StringElement *asmName) {
   struct StringElement *strBuffer = str_Init(tempBuffer);
   free(tempBuffer);
   return strBuffer;
+}
+
+void runCode(struct Vector *argv) {
+  if(argv->size != 2) {
+    Serial.println("Invalid number of arguments for CD");
+    return ;
+  }
+  else {
+    struct Vector **arge = (struct Vector **)argv->buffer;
+    struct StringElement *element = str_Init((char *)arge[1]->buffer);
+    struct FileContent_t *fd = fd_GetFileContent(currentFolder, element);
+    run((void *)fd->value->buffer);
+  }
 }
 
 void compileCode(struct Vector *argv) {
@@ -804,6 +835,9 @@ void recieveInstruction(struct StringElement *instruction, struct Vector *args) 
   }
   if(!strcmp((char *)arge[0]->buffer, "compile")) {
     compileCode(args);
+  }
+  if(!strcmp((char *)arge[0]->buffer, "run")) {
+    runCode(args);
   }
   args_Delete(args);
 }
