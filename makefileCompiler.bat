@@ -1,1 +1,0 @@
-gcc IndepCompiler.c Compiler.c -Wall -o program
